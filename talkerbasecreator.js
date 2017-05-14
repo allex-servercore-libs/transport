@@ -1,0 +1,229 @@
+function createTalkerBase(lib) {
+  'use strict';
+
+  var q = lib.q,
+    PING_PERIOD = 10*lib.intervals.Second;
+
+  var _id = 0;
+  function TalkerBase() {
+    /*
+    this.id = ++_id;
+    //console.trace();
+    console.log('new TalkerBase', this.id);
+    this.logEnabled = false;
+    */
+    lib.ComplexDestroyable.call(this);
+    this.clients = new lib.Map();
+    this.pendingDefers = new lib.DeferMap();
+    this.futureOOBs = new lib.Map();
+  }
+  lib.inherit(TalkerBase, lib.ComplexDestroyable);
+  TalkerBase.prototype.__cleanUp = function () {
+    var futures = this.futureOOBs, pendingDefers = this.pendingDefers, clients = this.clients; 
+    this.futureOOBs = null;
+    this.pendingDefers = null;
+    this.clients = null;
+    if (this.pingWaiter) {
+      lib.clearTimeout(this.pingWaiter);
+    }
+    if (futures) {
+      lib.containerDestroyAll(futures);
+      futures.destroy();
+    }
+    if (pendingDefers) {
+      pendingDefers.destroy();
+    }
+    if (clients) {
+      lib.containerDestroyAll(clients);
+      clients.destroy();
+    }
+    lib.ComplexDestroyable.prototype.__cleanUp.call(this);
+  };
+  function deathTeller(client, session) {
+    client.onOOBData([session, '-', true]);
+  }
+  TalkerBase.prototype.startTheDyingProcedure = function () {
+    this.clients.traverse(deathTeller);
+  };
+  function sessionprinter(client, session) {
+    console.log(session);
+  }
+  TalkerBase.prototype.dyingCondition = function () {
+    if (!this.clients) {
+      return true;
+    }
+    //console.log('TalkerBase', this.id, this.clients.count > 0 ? 'cannot' : 'can', 'die', this.clients.count);
+    //this.clients.traverse(sessionprinter);
+    if (this.clients.count < 1) {
+      this.log(this.id, process.pid, 'can die', this.clients.count);
+    }
+    return this.clients.count < 1;
+  };
+  TalkerBase.prototype.add = function (client) {
+    if (this.__dying) {
+      console.error('already dying, cannot add more Clients');
+      if (this.__dyingException) {
+        return q.reject(this.__dyingException);
+      } else {
+        return q(null);
+      }
+    }
+    if (!client.identity) {
+      return q(null);
+    }
+    var cid = lib.uid();
+    client.identity.talkerid = cid;
+    this.clients.add(cid, client);
+    this.log(this.id, process.pid, 'adding', cid, this.clients.count, this.clients.get(cid) ? 'ok' : 'nok');
+    return this.transfer(client, null, true).then(
+      this.onClientIntroduced.bind(this,cid)
+    );
+  };
+  TalkerBase.prototype.remove = function (client) {
+    if (!this.clients) {
+      return;
+    }
+    if (!client.identity.talkerid) {
+      return;
+    }
+    var c = this.clients.remove(client.identity.talkerid);
+    if (!c) {
+      console.trace();
+      console.error(process.pid, 'nothing on', this.id, 'for', client.identity.talkerid);
+      console.error(this.clients.count, 'current clients');
+      console.error(client);
+    }
+    this.maybeDie();
+  };
+  TalkerBase.prototype.onClientIntroduced = function (cid, introduce) {
+    var c, future;
+    if (!this.clients) {
+      return;
+    }
+    if (introduce && introduce.session) {
+      c = this.clients.remove(cid);
+      if (c) {
+        future = this.futureOOBs.remove(introduce.session);
+        c.identity.talkerid = introduce.session;
+        this.log('transferring', cid, '=>', introduce.session);
+        this.clients.add(introduce.session, c);
+        if (future) {
+          future.drain(c.onOOBData.bind(c));
+          future.destroy();
+        }
+      } else {
+        console.error('no client for', cid, '?');
+      }
+      return q(introduce);
+    } else {
+      c = this.clients.get(cid);
+      if (c) {
+        c.onOOBData([cid, '-', true]);
+      }
+    }
+  };
+  TalkerBase.prototype.transfer = function(client, content, introduce){
+    var did = lib.uid(),
+      d = this.pendingDefers.defer(did),
+      tia = client.identity.toIntroduceArray();
+    if (introduce) {
+      this.send([did, tia]);
+    } else {
+      this.send([did, tia, content]);
+    }
+    return d.promise;
+  };
+  TalkerBase.prototype.onIncoming = function(incoming){
+    var oob, oobsession, client, future, clientid;
+    if (!(this.pendingDefers && this.clients)) {
+      return;
+    }
+    if(!lib.isArray(incoming)){
+      console.log(this.type, 'rejecting', incoming);
+      return;
+    }
+    if (incoming[0] === '?') {
+      console.log(incoming);
+    }
+    switch(incoming[0]) {
+      case 'r': 
+        if (incoming[1] === '?') {
+          console.trace();
+          console.log(process.pid, this.subType, 'wtf?', incoming);
+        }
+        this.pendingDefers.resolve(incoming[1], incoming[2]);
+        break;
+      case 'e':
+        this.pendingDefers.reject(incoming[1], incoming[2]);
+        break;
+      case 'n':
+        this.pendingDefers.notify(incoming[1], incoming[2]);
+        break;
+      case 'oob':
+        oob = incoming[1];
+        oobsession = oob[0];//oob['.'];
+        client = this.clients.get(oobsession);
+        future;
+        if (client) {
+          if (client.identity.talkerid !== oobsession) {
+            console.error(client.identity.talkerid, '<>', oobsession, '?');
+          }
+          client.onOOBData(oob);
+        } else {
+          future = this.futureOOBs.get(oobsession);
+          if (!future) {
+            future = new lib.Fifo();
+            this.futureOOBs.add(oobsession, future);
+          }
+          future.push(oob);
+        }
+        break;
+      case '?':
+        console.log('pong?', incomming);
+        this.send(['!', incoming[1]]);
+        break;
+      case '!':
+        this.processPong(incoming[1]);
+        break;
+      case 'f':
+        console.log('should forget', incoming[1]);
+        clientid = incoming[1] && incoming[1][1] && incoming[1][1][0] ? incoming[1][1][0] : null;
+        if (clientid) {
+          client = this.clients.get(clientid);
+          if (client) {
+            client.onOOBData([clientid, '-', true]);
+          }
+        }
+        if (incoming[1] && incoming[1][0]) {
+          this.pendingDefers.reject(incoming[1][0], new lib.Error('CLIENT_SHOULD_FORGET', 'Session ID not recognized on the server side, forget yourself'));
+        }
+        break;
+      default:
+        console.log('not processed', incoming);
+        break;
+    }
+    //this.onIncomingExecResult(incomingunit);
+  };
+  TalkerBase.prototype.enableLogging = function () {
+    this.logEnabled = true;
+    var c = this.clients, ca = this.clients.add, cr = this.clients.remove, t = this;
+    this.clients.add = function (key) {
+      t.log('adding', key);
+      return ca.apply(c, arguments);
+    };
+    this.clients.remove = function (key) {
+      t.log('removing', key);
+      return cr.apply(c, arguments);
+    };
+  };
+  TalkerBase.prototype.log = function () {
+    if (this.logEnabled) {
+      var args = [process.pid, this.id].concat(Array.prototype.slice.call(arguments,0));
+      console.log.apply(console, args);
+    }
+  };
+
+  return TalkerBase;
+}
+
+module.exports = createTalkerBase;

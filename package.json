@@ -1,0 +1,27 @@
+{
+  "name": "allex_transportservercorelib",
+  "version": "1.0.0",
+  "description": "AllexJS server side Talker factory",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/allex-servercore-libs/transport.git"
+  },
+  "keywords": [
+    "ecosystem:AllexJS",
+    "server",
+    "side",
+    "transport",
+    "core",
+    "lib"
+  ],
+  "author": "Andrija Petrovic <andrija.hers@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/allex-servercore-libs/transport/issues"
+  },
+  "homepage": "https://github.com/allex-servercore-libs/transport#readme"
+}

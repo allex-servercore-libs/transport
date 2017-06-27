@@ -106,7 +106,7 @@ function createProcessTalker(lib, TalkerBase) {
           e = new Error(es);
         }
       }
-      this.dieExceptionally(e);
+      this.destroy(e);
       return;
     }
     if (!this.established) {

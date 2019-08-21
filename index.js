@@ -1,4 +1,5 @@
 function createTalkerFactory (lib) {
+  'use strict';
   var TalkerBase = require('./talkerbasecreator')(lib),
     PingingTalker = require('./pingingtalkercreator')(lib, TalkerBase),
     InProcTalker = require('./inproc/talkercreator')(lib, TalkerBase),

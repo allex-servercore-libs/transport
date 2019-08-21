@@ -4,7 +4,35 @@ function createTalkerBase(lib) {
   var q = lib.q,
     PING_PERIOD = 10*lib.intervals.Second;
 
-  var _id = 0;
+  function TalkerDestructor (talker) {
+    this.talker = talker;
+    this.counter = 0;
+    this.check();
+  }
+  TalkerDestructor.prototype.destroy = function () {
+    this.counter = null;
+    this.talker = null;
+  };
+  TalkerDestructor.prototype.check = function () {
+    if (!this.talker) {
+      return;
+    }
+    if (!this.talker.clients) {
+      return;
+    }
+    if (this.talker.clients.count>0) {
+      this.destroy();
+      return;
+    }
+    this.counter++;
+    if (this.counter>5) {
+      this.talker.destroy();
+      this.destroy();
+      return;
+    }
+    lib.runNext(this.check.bind(this), PING_PERIOD);
+  };
+  //var _id = 0;
   function TalkerBase() {
     /*
     this.id = ++_id;
@@ -16,6 +44,7 @@ function createTalkerBase(lib) {
     this.clients = new lib.Map();
     this.pendingDefers = new lib.DeferMap();
     this.futureOOBs = new lib.Map();
+    this.destructor = null;
   }
   lib.inherit(TalkerBase, lib.ComplexDestroyable);
   TalkerBase.prototype.__cleanUp = function () {
@@ -74,6 +103,10 @@ function createTalkerBase(lib) {
     var cid = lib.uid();
     client.identity.talkerid = cid;
     this.clients.add(cid, client);
+    if (this.destructor) {
+      this.destructor.destroy();
+    }
+    this.destructor = null;
     this.log(this.id, process.pid, 'adding', cid, this.clients.count, this.clients.get(cid) ? 'ok' : 'nok');
     return this.transfer(client, null, true).then(
       this.onClientIntroduced.bind(this,cid)
@@ -94,6 +127,9 @@ function createTalkerBase(lib) {
       console.error(client);
     }
     this.maybeDie();
+    if (!this.destructor) {
+      this.destructor = new TalkerDestructor(this);
+    }
   };
   TalkerBase.prototype.onClientIntroduced = function (cid, introduce) {
     var c, future;

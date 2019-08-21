@@ -1,4 +1,5 @@
 function createSocketTalkerFactory(lib, TalkerBase) {
+  'use strict';
   var SocketTalkerBase = require('./talkercreator')(lib, TalkerBase),
     InetTalker = require('./inettalkercreator')(lib, SocketTalkerBase),
     UnixTalker = require('./unixtalkercreator')(lib, SocketTalkerBase);

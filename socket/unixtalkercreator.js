@@ -9,7 +9,11 @@ function createUnixTalker(lib, PingingTalker) {
     this.endSent = null;
     PingingTalker.prototype.__cleanUp.call(this);
   };
-  UnixTalker.prototype.disposeOfSocket = lib.dummyFunc;
+  UnixTalker.prototype.disposeOfSocket = function () {
+    if (this.socket) {
+      this.socket.end();
+    }
+  };
   UnixTalker.prototype.parsePDU = function (result, item) {
     if (lib.isString(item) && item === '-') {
       if (this.invalidator) {

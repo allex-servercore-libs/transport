@@ -4,10 +4,7 @@ function dump(obj){
 function createTalker(lib, PingingTalker){
   'use strict';
   var Fifo = lib.Fifo, StringBuffer = lib.StringBuffer;
-  var _id = 0, _count = 0;
   function Talker(socket,cb,acceptor){
-    this.id = process.pid + '_' + (++_id);
-    //this.log('new socket', ++_count);
     PingingTalker.call(this, !acceptor);
     this.lenBuf = new Buffer(4);
     this.lenBufread = 0;
@@ -74,6 +71,11 @@ function createTalker(lib, PingingTalker){
     PingingTalker.prototype.__cleanUp.call(this);
   };
   Talker.prototype.dyingCondition = function () {
+    if (this.socket) {
+      if (!(this.socket.writable && this.socket.readable)) {
+        return true;
+      }
+    }
     if (this.sendingQueue !== null && this.sendingBuffs && this.sendingQueue.length < 1 && this.sendingBuffs.length < 1) {
       //this.log('disposeOfSocket');
       this.disposeOfSocket();
@@ -83,6 +85,21 @@ function createTalker(lib, PingingTalker){
       return false;
     }
     return PingingTalker.prototype.dyingCondition.call(this);
+  };
+  Talker.prototype.isUsable = function () {
+    if (!PingingTalker.prototype.isUsable.call(this)) {
+      return false;
+    }
+    if (!this.socket) {
+      return false;
+    }
+    if (!this.socket.readable) {
+      return false;
+    }
+    if (!this.socket.writable) {
+      return false;
+    }
+    return true;
   };
   Talker.prototype.detachFromSocket = function () {
     if(this.socket){
@@ -109,6 +126,8 @@ function createTalker(lib, PingingTalker){
     var s = this.socket;
     this.detachFromSocket();
     if (s) {
+      //console.trace();
+      //console.log(this.id, this.constructor.name, this.acceptor ? 'acceptor':'initiator', 'destroying socket');
       s.destroy();
     }
     this.destroy();

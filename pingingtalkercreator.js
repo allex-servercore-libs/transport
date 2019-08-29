@@ -4,6 +4,20 @@ function createPingingTalker(lib, TalkerBase) {
   var q = lib.q,
     PING_PERIOD = 10*lib.intervals.Second;
 
+  function pingponginitiator (pt, initiator) {
+    if (!pt) {
+      pt = null;
+      return;
+    }
+    if (initiator) {
+      pt.startNewSelfDestruction();
+      pt.processPong(Date.now()-5);
+      pt = null;
+      return;
+    }
+    pt.processPing();
+    pt = null;
+  }
   function PingingTalker(initiator) {
     if ('boolean' !== typeof initiator) {
       console.trace();
@@ -17,11 +31,7 @@ function createPingingTalker(lib, TalkerBase) {
     this.pingfailer = this.onPingFailed.bind(this);
     this.pingWaiter = null;
     this.pingSender = null;
-    if (initiator) {
-      this.processPong(Date.now()-5);
-    } else {
-      this.processPing();
-    }
+    lib.runNext(pingponginitiator.bind(null, this, initiator));
   }
   lib.inherit(PingingTalker, TalkerBase);
   PingingTalker.prototype.__cleanUp = function () {
@@ -40,6 +50,10 @@ function createPingingTalker(lib, TalkerBase) {
     TalkerBase.prototype.__cleanUp.call(this);
   }
   PingingTalker.prototype.ping = function () {
+    if (!this.isUsable()) {
+      return;
+    }
+    //console.log(this.id, this.constructor.name, 'pinging with', this.clients.count, 'clients');
     this.lastping = Date.now();
     this.send(['?', this.lastping]);
   };
@@ -59,6 +73,10 @@ function createPingingTalker(lib, TalkerBase) {
   PingingTalker.prototype.processPong = function (pong) {
     var lag = Date.now()-pong,
       next = PING_PERIOD-lag;
+    if (!this.isUsable()) {
+      return;
+    }
+    //console.log(this.id, this.constructor.name, 'got pong with', this.clients.count, 'clients');
     if (next < 0) {
       this.ping();
       return;

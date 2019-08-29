@@ -24,7 +24,7 @@ function createUnixTalker(lib, PingingTalker) {
     return PingingTalker.prototype.parsePDU.call(this, result, item);
   };
   UnixTalker.prototype.detachFromSocket = function () {
-    if (this.socket) {
+    if (this.socket && this.socket.writable) {
       if (this.endSent === false) {
         this.endSent = true;
         this.send('-');

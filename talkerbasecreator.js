@@ -25,19 +25,21 @@ function createTalkerBase(lib) {
       return;
     }
     this.counter++;
-    if (this.counter>5) {
+    if (this.counter>2) {
+      //console.log('TalkerDestructor destroying', this.talker.id);
       this.talker.destroy();
       this.destroy();
       return;
     }
+    //console.log('TalkerDestructor destroying NOT', this.talker.id, 'because counter', this.counter);
     lib.runNext(this.check.bind(this), PING_PERIOD);
   };
-  //var _id = 0;
+  var _id = 0;
   function TalkerBase() {
     /*
-    this.id = ++_id;
+    this.id = process.pid+'_'+(++_id);
     //console.trace();
-    console.log('new TalkerBase', this.id);
+    console.log('new', this.constructor.name, this.id);
     this.logEnabled = false;
     */
     lib.ComplexDestroyable.call(this);
@@ -74,9 +76,11 @@ function createTalkerBase(lib) {
   TalkerBase.prototype.startTheDyingProcedure = function () {
     this.clients.traverse(deathTeller);
   };
+  /*
   function sessionprinter(client, session) {
     console.log(session);
   }
+  */
   TalkerBase.prototype.dyingCondition = function () {
     if (!this.clients) {
       return true;
@@ -87,6 +91,9 @@ function createTalkerBase(lib) {
       this.log(this.id, process.pid, 'can die', this.clients.count);
     }
     return this.clients.count < 1;
+  };
+  TalkerBase.prototype.isUsable = function () {
+    return !!this.clients;
   };
   TalkerBase.prototype.add = function (client) {
     if (this.__dying) {
@@ -107,6 +114,7 @@ function createTalkerBase(lib) {
       this.destructor.destroy();
     }
     this.destructor = null;
+    //console.log(this.id, 'after add has', this.clients.count, 'clients');
     this.log(this.id, process.pid, 'adding', cid, this.clients.count, this.clients.get(cid) ? 'ok' : 'nok');
     return this.transfer(client, null, true).then(
       this.onClientIntroduced.bind(this,cid)
@@ -120,6 +128,7 @@ function createTalkerBase(lib) {
       return;
     }
     var c = this.clients.remove(client.identity.talkerid);
+    //console.log(this.id, 'after remove has', this.clients.count, 'clients');
     if (!c) {
       console.trace();
       console.error(process.pid, 'nothing on', this.id, 'for', client.identity.talkerid);
@@ -127,9 +136,14 @@ function createTalkerBase(lib) {
       console.error(client);
     }
     this.maybeDie();
-    if (!this.destructor) {
+    this.startNewSelfDestruction();
+  };
+  TalkerBase.prototype.startNewSelfDestruction = function () {
+    if (!(this.destructor && this.destructor.talker === this)) {
       this.destructor = new TalkerDestructor(this);
-    }
+    }/* else {
+      console.log('did NOT start new TalkerDestructor because I already have', this.destructor);
+    }*/
   };
   TalkerBase.prototype.onClientIntroduced = function (cid, introduce) {
     var c, future;

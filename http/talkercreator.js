@@ -11,13 +11,15 @@ function createHttpTalker (hers, q) {
   };
   hers.inherit(HTTPTalker,hers.Destroyable);
   HTTPTalker.prototype.__cleanUp = function(){
-    this.host = null;
-    this.port = null;
-    this.jsonizer = null;
     if(this.defer && this.data){
       this.defer.resolve(this.data);
-      this.defer = null;
     }
+    this.established = null;
+    this.data = null;
+    this.defer = null;
+    this.jsonizer = null;
+    this.port = null;
+    this.host = null;
     hers.Destroyable.prototype.__cleanUp.call(this);
   };
   HTTPTalker.prototype.queryize = function(obj){

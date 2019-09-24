@@ -4,12 +4,19 @@ function createInProcTalker(lib, TalkerBase) {
   function InProcTalker(inprocgate) {
     TalkerBase.call(this);
     this.gate = inprocgate;
-    this.incomer = this.onIncoming.bind(this);
-    this.gate.service.destroyed.attachForSingleShot(this.onServiceDown.bind(this));
+    this.gateDestroyedListener = null;
+    if (!(this.gate && this.gate.service && this.gate.service.destroyed)) {
+      this.destroy();
+      return;
+    }
+    this.gateDestroyedListener = this.gate.service.destroyed.attach(this.onServiceDown.bind(this));
   }
   lib.inherit(InProcTalker, TalkerBase);
   InProcTalker.prototype.__cleanUp = function () {
-    this.incomer = null;
+    if (this.gateDestroyedListener) {
+      this.gateDestroyedListener.destroy();
+    }
+    this.gateDestroyedListener = null;
     this.gate = null;
     TalkerBase.prototype.__cleanUp.call(this);
   };

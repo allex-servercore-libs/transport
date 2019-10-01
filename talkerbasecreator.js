@@ -159,12 +159,13 @@ function createTalkerBase(lib) {
         this.clients.add(introduce.session, c);
         if (future) {
           future.drain(c.onOOBData.bind(c));
+          c = null;
           future.destroy();
         }
       } else {
         console.error('no client for', cid, '?');
       }
-      return q(introduce);
+      return introduce;//q(introduce);
     } else {
       c = this.clients.get(cid);
       if (c) {
@@ -213,7 +214,6 @@ function createTalkerBase(lib) {
         oob = incoming[1];
         oobsession = oob[0];//oob['.'];
         client = this.clients.get(oobsession);
-        future;
         if (client) {
           if (client.identity.talkerid !== oobsession) {
             console.error(client.identity.talkerid, '<>', oobsession, '?');
@@ -236,7 +236,7 @@ function createTalkerBase(lib) {
         this.processPong(incoming[1]);
         break;
       case 'f':
-        console.log('should forget', incoming[1]);
+        //console.log('should forget', incoming[1]);
         clientid = incoming[1] && incoming[1][1] && incoming[1][1][0] ? incoming[1][1][0] : null;
         if (clientid) {
           client = this.clients.get(clientid);

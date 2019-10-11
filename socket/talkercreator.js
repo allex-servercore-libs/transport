@@ -24,6 +24,7 @@ function createTalker(lib, PingingTalker){
     this.errorer = this.onSocketError.bind(this);
     this.incomingDispatcher = this.onIncomingDispatcher.bind(this);
     this.sendingBuffsDrainerBound = this.sendingBuffsDrainer.bind(this);
+    this.processDataBound = this.processData.bind(this);
     this.socket.setNoDelay(true);
     //if (acceptor) {
       this.socket.setTimeout(5*this.KEEP_ALIVE_INTERVAL);
@@ -40,6 +41,7 @@ function createTalker(lib, PingingTalker){
     //this.log('dying');
     this.cb = null;
     this.detachFromSocket();
+    this.processDataBound = null;
     this.sendingBuffsDrainerBound = null;
     this.incomingDispatcher = null;
     this.errorer = null;
@@ -282,7 +284,7 @@ function createTalker(lib, PingingTalker){
         this.currentData = null;
         this.dataCursor=0;
         if(this.incomingData.length){
-          this.incomingData.pop(this.processData.bind(this));
+          this.incomingData.pop(this.processDataBound);
         }
       }else{
         this.processData(data,i);

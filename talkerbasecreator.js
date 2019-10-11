@@ -155,7 +155,6 @@ function createTalkerBase(lib) {
       if (c) {
         future = this.futureOOBs.remove(introduce.session);
         c.identity.talkerid = introduce.session;
-        this.log('transferring', cid, '=>', introduce.session);
         this.clients.add(introduce.session, c);
         if (future) {
           future.drain(c.onOOBData.bind(c));
@@ -178,13 +177,24 @@ function createTalkerBase(lib) {
       d = this.pendingDefers.defer(did),
       tia = client.identity.toIntroduceArray();
     if (introduce) {
+      //console.log('+++', did, 'introduce');
       this.send([did, tia]);
     } else {
+      /*
+      try {
+        //console.log('+++', did, JSON.stringify(content), 'from', tia);
+      }
+      catch (e) {
+        //console.log('+++', did, 'some internal object');
+      }
+      //this.reportDefers(did);
+      */
       this.send([did, tia, content]);
     }
     return d.promise;
   };
   TalkerBase.prototype.onIncoming = function(incoming){
+    //console.log('onIncoming', incoming);
     var oob, oobsession, client, future, clientid;
     if (!(this.pendingDefers && this.clients)) {
       return;
@@ -202,10 +212,24 @@ function createTalkerBase(lib) {
           console.trace();
           console.log(process.pid, this.subType, 'wtf?', incoming);
         }
+        var pdc;
+        if (incoming[2] === 'dead') {
+          pdc = this.pendingDefers._map.count;
+        }
+        //console.log('---', incoming[1]);
         this.pendingDefers.resolve(incoming[1], incoming[2]);
+        /*
+        this.reportDefers('after resolve '+incoming[1]);
+        if (incoming[2] === 'dead' && this.pendingDefers._map.count !== pdc-1) {
+          console.log('Defer', incoming[1], 'was not resolved');
+          process.exit(1);
+        }
+        */
         break;
       case 'e':
+        //console.log('---', incoming[1]);
         this.pendingDefers.reject(incoming[1], incoming[2]);
+        //this.reportDefers('after reject '+incoming[1]);
         break;
       case 'n':
         this.pendingDefers.notify(incoming[1], incoming[2]);
@@ -253,6 +277,15 @@ function createTalkerBase(lib) {
         break;
     }
     //this.onIncomingExecResult(incomingunit);
+  };
+  var _reportDefersThreshold = 20;
+  TalkerBase.prototype.reportDefers = function (title) {
+    //return;
+    if (this.pendingDefers && this.pendingDefers._map && this.pendingDefers._map.count>=_reportDefersThreshold) {
+      console.log(this.constructor.name, title, this.pendingDefers._map.count, 'defers');
+    }
+    /*
+    */
   };
   TalkerBase.prototype.enableLogging = function () {
     this.logEnabled = true;

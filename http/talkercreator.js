@@ -1,97 +1,116 @@
-function createHttpTalker (hers, q) {
+var signalR = require('@microsoft/signalr');
+
+function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin) {
   'use strict';
-  function HTTPTalker(host,port,options){
-    hers.Destroyable.call(this);
-    this.host = host;
-    this.port = port;
-    this.jsonizer = (options && options.json)||false;
-    this.defer = null;
-    this.data = null;
-    this.established = false;
+
+  var qlib = lib.qlib,
+    JobOnDestroyableBase = qlib.JobOnDestroyableBase;
+
+  function HttpTalker(connectionstring, address, port, defer) {
+    TalkerBase.call(this);
+    OuterClientBoundTalkerMixin.call(this, address, port, defer);
+    this.underscorer = this.onSignalRUnderscore.bind(this);
+    this.closer = this.onSignalRClosed.bind(this);
+    this.connectionstring = connectionstring;
+    this.sr = new signalR.HubConnectionBuilder()
+      .withUrl(this.connectionstring)
+      .configureLogging(5) //critical only
+      .build();
+    this.jobs = new qlib.JobCollection();
+    this.setHandlers();
+    this.sr.start().then(
+      defer.resolve.bind(defer, this),
+      this.errorer
+    );
   };
-  hers.inherit(HTTPTalker,hers.Destroyable);
-  HTTPTalker.prototype.__cleanUp = function(){
-    if(this.defer && this.data){
-      this.defer.resolve(this.data);
+  lib.inherit(HttpTalker, TalkerBase);
+  OuterClientBoundTalkerMixin.addMethods(HttpTalker);
+  HttpTalker.prototype.__cleanUp = function(){
+    if (this.jobs) {
+      this.jobs.destroy();
     }
-    this.established = null;
-    this.data = null;
-    this.defer = null;
-    this.jsonizer = null;
-    this.port = null;
-    this.host = null;
-    hers.Destroyable.prototype.__cleanUp.call(this);
+    this.jobs = null;
+    this.unSetHandlers();
+    if (this.sr) {
+      this.sr.stop();
+    }
+    this.sr = null;
+    this.connectionstring = null;
+    this.errorer = null;
+    this.closer = null;
+    this.underscorer = null;
+    OuterClientBoundTalkerMixin.prototype.destroy.call(this);
+    TalkerBase.prototype.__cleanUp.call(this);
   };
-  HTTPTalker.prototype.queryize = function(obj){
-    var q = '';
-    for(var i in obj){
-      if(q){
-        q+='&';
-      }
-      q+=i+'='+encodeURIComponent(obj[i]);
-    }
-    return q ? '?'+q : '';
-  };
-  HTTPTalker.prototype.onData = function(chunk){
-    if(this.data!==null){
-      this.data += chunk;
-    }
-  };
-  HTTPTalker.prototype.onResponseEnd = function(){
-    if(this.jsonizer){
-      try{
-        this.data = JSON.parse(this.data);
-      }
-      catch(e){
-        console.log('JSON parse error:',e,'for',this.data);
-        this.defer.reject(e);
-        this.defer = null;
-      }
-    }
-    if(this.defer){
-      this.defer.resolve(this.data);
-      this.defer = null;
-      this.data = null;
-    }
-  };
-  HTTPTalker.prototype.onResponse = function(page,res){
-    if(!this.established){
-      this.established = true;
-    }
-    if(!this.defer){
-      return;
-    }
-    this.data = '';
-    if(res.statusCode!='200'){
-      this.defer.reject(res.statusCode);
-      this.defer = null;
-      return;
-    }else{
-      res.setEncoding('utf8');
-      res.on('data',this.onData.bind(this));
-      res.on('end',this.onResponseEnd.bind(this));
-    }
-  };
-  HTTPTalker.prototype.onError = function(page,obj,e){
-    if(this.established){
-      this.destroy();
-    }
-    if(!this.host){
-      return;
-    }
-    //console.log('HTTPTalker error',e.code ? e.code : '', this.host, this.port, page);
-    setTimeout(this.sendRequest.bind(this,page,obj),1000);
-  };
-  HTTPTalker.prototype.tell = function(page,obj){
-    if(this.defer){
-      throw 'Telling already in progress';
-    }
-    this.defer = q.defer();
-    this.sendRequest(page,obj);
-    return this.defer.promise;
+  HttpTalker.prototype.send = function (obj) {
+    return this.jobs.run('.', new SignalRSendingJob(this, obj));
   };
 
-  return HTTPTalker;
+  HttpTalker.prototype.setHandlers = function () {
+    this.sr.on('_', this.underscorer);
+    this.sr.onclose(this.closer);
+  };
+  HttpTalker.prototype.unSetHandlers = function () {
+    if (!this.sr) {
+      return;
+    }
+    this.sr.off('_', this.underscorer);
+    this.sr.onclose(null); //no way to unset the close handler?
+  };
+
+  HttpTalker.prototype.onSignalRUnderscore = function (oobobj) {
+    //console.log('HttpTalker onIncoming', oobobj);
+    this.onIncoming(oobobj);
+  };
+  HttpTalker.prototype.onSignalRClosed = function (error) {
+    console.log(process.pid, this.address, this.port, 'HttpTalker closing');
+    //this.destroy(error);
+    this.destroy(new lib.NoServerError('ws',this.address,this.port));
+  };
+
+
+  //jobs
+
+  function SignalRSendingJob (talker, data, defer) {
+    JobOnDestroyableBase.call(this, talker, defer);
+    this.talker = talker;
+    this.data = data;
+  }
+  lib.inherit(SignalRSendingJob, JobOnDestroyableBase);
+  SignalRSendingJob.prototype.destroy = function () {
+    this.data = null;
+    this.talker = null;
+    JobOnDestroyableBase.prototype.destroy.call(this);
+  };
+  SignalRSendingJob.prototype._destroyableOk = function () {
+    return this.destroyable && this.destroyable.sr;
+  };
+  SignalRSendingJob.prototype.go = function () {
+    var ok = this.okToGo();
+    if (!ok.ok) {
+      return ok.val;
+    }
+    this.destroyable.sr.send('allexjs', this.data).then(
+			this.onSent.bind(this),
+			this.reject.bind(this)
+    );
+    return ok.val;
+  };
+  SignalRSendingJob.prototype.onSent = function (error) {
+    if (!this.okToProceed()) {
+      console.log('nok to proceed');
+      return;
+    }
+    if (error) {
+      this.reject(error);
+      return;
+    }
+    this.resolve(true);
+  };
+
+
+
+  return HttpTalker;
 
 }
 module.exports = createHttpTalker;

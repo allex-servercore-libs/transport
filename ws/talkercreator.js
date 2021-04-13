@@ -1,4 +1,4 @@
-function createWSTalker(lib, PingingTalker) {
+function createWSTalker(lib, PingingTalker, OuterClientBoundTalkerMixin) {
   'use strict';
   var _WebSocket, StringBuffer = lib.StringBuffer;
   if ('undefined' !== typeof window) {
@@ -15,13 +15,10 @@ function createWSTalker(lib, PingingTalker) {
   }
   function WSTalker(connectionstring, address, port, defer){
     PingingTalker.call(this, true);
+    OuterClientBoundTalkerMixin.call(this, address, port, defer);
     try{
     this.connectionstring = connectionstring;
-    this.address = address;
-    this.port = port;
-    this.defer = defer;
     this.wsock = new _WebSocket(connectionstring);
-    this.errorer = this.onError.bind(this);
     this.sendchecker = this.onSend.bind(this);
     this.messager = this.onMessage.bind(this);
     this.opener = defer.resolve.bind(defer, this);
@@ -36,6 +33,7 @@ function createWSTalker(lib, PingingTalker) {
     }
   }
   lib.inherit(WSTalker, PingingTalker);
+  OuterClientBoundTalkerMixin.addMethods(WSTalker);
   WSTalker.prototype.__cleanUp = function () {
     if(this.wsock){
       this.wsock.close();
@@ -46,11 +44,8 @@ function createWSTalker(lib, PingingTalker) {
     this.opener = null;
     this.messager = null;
     this.sendchecker = null;
-    this.errorer = null;
     this.wsock = null;
-    this.defer = null;
-    this.port = null;
-    this.address = null;
+    OuterClientBoundTalkerMixin.prototype.destroy.call(this);
     PingingTalker.prototype.__cleanUp.call(this);
   };
   WSTalker.prototype.setHandlers = function(){
@@ -68,36 +63,6 @@ function createWSTalker(lib, PingingTalker) {
     this.wsock.removeListener('open', this.opener);
     this.wsock.removeListener('close', this.closer);
     this.wsock = null;
-  };
-  WSTalker.prototype.onError = function(error){
-    var err;
-    if (!('code' in error)) {
-      err = new lib.NoServerError('ws',this.address,this.port);
-    } else {
-      switch(error.code){
-        case 'ENOTFOUND':
-          err = new lib.DestinationError('ws',this.address,this.port);
-          break;
-        case 'ECONNREFUSED':
-          err = new lib.NoServerError('ws',this.address,this.port);
-          break;
-        default:
-          //setTimeout(this.connect.bind(this),100);
-          err = error;
-          break;
-      }
-    }
-    if (this.defer) {
-      this.defer.reject(err);
-      this.defer = null;
-    }
-    this.unSetHandlers();
-    this.wsock = null;
-    if (err) {
-      this.destroy(err);
-    } else {
-      this.destroy();
-    }
   };
   WSTalker.prototype.onSend = function (error) {
     if (error) {

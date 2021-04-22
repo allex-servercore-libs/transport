@@ -1,4 +1,4 @@
-function createTalkerFactory (lib) {
+function createTalkerFactory (lib, signalR) {
   'use strict';
   var TalkerBase = require('./talkerbasecreator')(lib),
     PingingTalker = require('./pingingtalkercreator')(lib, TalkerBase),
@@ -7,7 +7,7 @@ function createTalkerFactory (lib) {
     tcpTalkerFactory = require('./socket/factorycreator')(lib, PingingTalker),
     WSTalker = require('./ws/talkercreator')(lib, PingingTalker, OuterClientBoundTalkerMixin),
     ProcessTalker = require('./process/talkercreator')(lib, TalkerBase),
-    HttpTalker = require('./http/talkercreator')(lib, TalkerBase, OuterClientBoundTalkerMixin);
+    HttpTalker = require('./http/talkercreator')(lib, TalkerBase, OuterClientBoundTalkerMixin, signalR);
 
   function TalkerFactory(){
   }

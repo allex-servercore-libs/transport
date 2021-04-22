@@ -10,9 +10,6 @@
     "type": "git",
     "url": "git+https://github.com/allex-servercore-libs/transport.git"
   },
-  "dependencies": {
-    "@microsoft/signalr": "5.x"
-  },
   "keywords": [
     "ecosystem:AllexJS",
     "server",

@@ -1,6 +1,4 @@
-var signalR = require('@microsoft/signalr');
-
-function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin) {
+function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin, signalR) {
   'use strict';
 
   var qlib = lib.qlib,
@@ -18,7 +16,7 @@ function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin) {
       .build();
     this.jobs = new qlib.JobCollection();
     this.setHandlers();
-    this.sr.start().then(
+    this.sr.start({withCredentials: false}).then(
       defer.resolve.bind(defer, this),
       this.errorer
     );
@@ -63,9 +61,13 @@ function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin) {
     this.onIncoming(oobobj);
   };
   HttpTalker.prototype.onSignalRClosed = function (error) {
-    console.log(process.pid, this.address, this.port, 'HttpTalker closing');
-    //this.destroy(error);
-    this.destroy(new lib.NoServerError('ws',this.address,this.port));
+    if (this.address && this.port) {
+      console.log(process.pid, this.address, this.port, 'HttpTalker closing');
+      //this.destroy(error);
+      this.destroy(new lib.NoServerError('ws',this.address,this.port));
+      return;
+    }
+    this.destroy();
   };
 
 

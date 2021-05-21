@@ -253,7 +253,7 @@ function createTalkerBase(lib) {
         }
         break;
       case '?':
-        console.log('pong?', incomming);
+        console.log('pong?', incoming);
         this.send(['!', incoming[1]]);
         break;
       case '!':

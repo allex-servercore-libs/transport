@@ -1,6 +1,6 @@
 {
   "name": "allex_transportservercorelib",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "AllexJS server side Talker factory",
   "main": "index.js",
   "scripts": {

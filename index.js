@@ -6,8 +6,11 @@ function createTalkerFactory (lib, signalR) {
     InProcTalker = require('./inproc/talkercreator')(lib, TalkerBase),
     tcpTalkerFactory = require('./socket/factorycreator')(lib, PingingTalker),
     WSTalker = require('./ws/talkercreator')(lib, PingingTalker, OuterClientBoundTalkerMixin),
-    ProcessTalker = require('./process/talkercreator')(lib, TalkerBase),
-    HttpTalker = require('./http/talkercreator')(lib, TalkerBase, OuterClientBoundTalkerMixin, signalR);
+    processTalkerLib = require('./process')(lib, TalkerBase, PingingTalker, tcpTalkerFactory),
+    HttpTalker = require('./http/talkercreator')(lib, TalkerBase, OuterClientBoundTalkerMixin, signalR),
+    ProcessTalker = processTalkerLib.ProcessTalker,
+    ExternalProcessTalker = processTalkerLib.ExternalProcessTalker
+    ;
 
   function TalkerFactory(){
   }
@@ -16,6 +19,9 @@ function createTalkerFactory (lib, signalR) {
   };
   TalkerFactory.prototype.newProcessTalker = function (jstofork, options) {
     return new ProcessTalker(jstofork, options);
+  };
+  TalkerFactory.prototype.newExternalProcessTalker = function (jstofork, options) {
+    return new ExternalProcessTalker(jstofork, options);
   };
   TalkerFactory.prototype.newTcpTalker = function (socketoraddress, cborport, acceptor) {
     return tcpTalkerFactory(socketoraddress, cborport, acceptor);

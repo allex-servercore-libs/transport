@@ -74,7 +74,9 @@ function createTalkerBase(lib) {
     client.onOOBData([session, '-', true]);
   }
   TalkerBase.prototype.startTheDyingProcedure = function () {
-    this.clients.traverse(deathTeller);
+    if (this.clients) {
+      this.clients.traverse(deathTeller);
+    }
   };
   /*
   function sessionprinter(client, session) {

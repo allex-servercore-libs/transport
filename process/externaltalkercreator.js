@@ -57,7 +57,7 @@ function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
     var spawn = env.ALLEX_SPAWN;
     var modulename = spawn.modulename, debug = spawn.debug;
     var path = require('path').dirname(require.resolve(modulename));
-    path += '/dotnet//bin/'+(debug ? 'Debug' : 'Release')+'/netcoreapp3.1/ServicePack.dll';
+    path += '/dotnet//bin/'+(debug ? 'Debug' : 'Release')+'/netcoreapp3.1/'+modulename+'.dll';
     args[0] = path;
   };
   ExternalProcessTalker.prototype.additionalMakeupOnExecArgv = function (execargs, options) {
@@ -94,6 +94,7 @@ function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
   ExternalProcessTalker.prototype.tryOpenChildPipe = function () {
     if (!(this.proc && this.proc.pid)) {
       lib.runNext(this.tryOpenChildPipe.bind(this), 100);
+      return;
     }
     var pipename = '/tmp/allexprocess.'+this.proc.pid;
     try {

@@ -1,6 +1,8 @@
 var cp = require('child_process');
 var net = require('net');
 var fs = require('fs');
+var Path = require('path');
+var tempPipeDir = require('allex_temppipedirserverruntimelib');
 
 function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
   'use strict';
@@ -56,8 +58,7 @@ function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
   ExternalProcessTalker.prototype.makeUpOnCreationArgsFromEnvironment = function (args, env){
     var spawn = env.ALLEX_SPAWN;
     var modulename = spawn.modulename, debug = spawn.debug;
-    var path = require('path').dirname(require.resolve(modulename));
-    path += '/dotnet//bin/'+(debug ? 'Debug' : 'Release')+'/netcoreapp3.1/'+modulename+'.dll';
+    var path = Path.join(Path.dirname(require.resolve(modulename)), 'dotnet', 'bin', (debug ? 'Debug' : 'Release'), 'netcoreapp3.1', modulename+'.dll');
     args[0] = path;
   };
   ExternalProcessTalker.prototype.additionalMakeupOnExecArgv = function (execargs, options) {
@@ -70,7 +71,7 @@ function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
     this.proc.on('exit', this.destroyer);
     //this.proc.stdout.on('data', function(data) {console.log('incoming data:', data.toString());});
     //this.proc.stderr.on('data', function(data) {console.log('incoming error:', data.toString());});
-    console.log('Spawned child process pid', this.proc.pid);
+    //console.log('Spawned child process pid', this.proc.pid);
     this.tryOpenChildPipe();
   };
   ExternalProcessTalker.prototype.tryToSendToProcess = function (data) {
@@ -96,10 +97,11 @@ function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
       lib.runNext(this.tryOpenChildPipe.bind(this), 100);
       return;
     }
-    var pipename = '/tmp/allexprocess.'+this.proc.pid;
+    var pipename = Path.join(tempPipeDir(),'allexprocess.'+this.proc.pid);
     try {
       fs.accessSync(pipename, fs.constants.R_OK | fs.constants.W_OK);
     } catch(e) {
+      //console.log('error for pipe', pipename, e);
       lib.runNext(this.tryOpenChildPipe.bind(this), 100);
       return;
     }

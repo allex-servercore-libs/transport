@@ -53,14 +53,15 @@ function createProcessTalkerBase(lib, TalkerBase, mylib) {
       ea = [];
     lib.traverse(process.env, setEnvVariable.bind(null, env));
     if (options) {
+      var oe = null;
       if (options.env) {
         try {
-          var oe = JSON.parse(options.env);
+          oe = JSON.parse(options.env);
           lib.traverse(oe, setEnvVariable.bind(null, env));
           this.makeUpOnCreationArgsFromEnvironment(args, oe);
         } catch (ignore) {}
       }
-      this.additionalMakeupOnExecArgv(ea, options);
+      this.additionalMakeupOnExecArgv(ea, oe ? oe.ALLEX_SPAWN : null);
     }
     createoptions.execArgv=ea;
     this.doTheCreation(jstocreate, args, createoptions);

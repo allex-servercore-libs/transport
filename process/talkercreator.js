@@ -28,8 +28,13 @@ function createProcessTalker(lib, TalkerBase, mylib) {
     }
   };
   ForkedProcessTalker.prototype.additionalMakeupOnExecArgv = function (execargs, options) {
+    if (!options) return;
     if (options.debug_brk) {
-      execargs.push('--inspect-brk=' + options.debug_brk);
+      if (lib.isString(options.debug_brk)) {
+        execargs.push('--inspect-brk=' + options.debug_brk);
+      } else {
+        execargs.push('--inspect-brk');
+      }
     } else if (options.debug) {
       execargs.push('--inspect');
     } else if (options.prof) {

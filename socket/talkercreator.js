@@ -184,7 +184,7 @@ function createTalker(lib, PingingTalker){
     this.sendingBuffs.push(sqb);
     */
     var sqblen = Buffer.byteLength(sq, 'utf8'),
-        sqlb = new Buffer(4);
+        sqlb = Buffer.allocUnsafe(4);
     sqlb.writeUInt32LE(sqblen, 0);
     this.sendingBuffs.push(sqlb);
     this.sendingBuffs.push(sq);

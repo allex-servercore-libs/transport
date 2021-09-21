@@ -57,7 +57,7 @@ function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin, signalR
   };
 
   HttpTalker.prototype.onSignalRUnderscore = function (oobobj) {
-    //console.log('HttpTalker onIncoming', oobobj);
+    //console.log('HttpTalker onIncoming', require('util').inspect(oobobj, {colors:true, depth:7}));
     this.onIncoming(oobobj);
   };
   HttpTalker.prototype.onSignalRClosed = function (error) {
@@ -92,6 +92,7 @@ function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin, signalR
     if (!ok.ok) {
       return ok.val;
     }
+    //console.log('HttpTalker sending', require('util').inspect(this.data, {colors:true, depth:7}));
     this.destroyable.sr.send('allexjs', this.data).then(
 			this.onSent.bind(this),
 			this.reject.bind(this)

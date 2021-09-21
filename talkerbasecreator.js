@@ -70,13 +70,19 @@ function createTalkerBase(lib) {
     }
     lib.ComplexDestroyable.prototype.__cleanUp.call(this);
   };
-  function deathTeller(client, session) {
-    client.onOOBData([session, '-', true]);
-  }
-  TalkerBase.prototype.startTheDyingProcedure = function () {
-    if (this.clients) {
-      this.clients.traverse(deathTeller);
+  function deathTeller(exception, client, session) {
+    /*
+    if (!client.takeExternalException) {
+      client.onOOBData([session, '-', true]);
     }
+    */
+    client.takeExternalException(exception);
+  }
+  TalkerBase.prototype.startTheDyingProcedure = function (exception) {
+    if (this.clients) {
+      this.clients.traverse(deathTeller.bind(null, exception));
+    }
+    exception = null;
   };
   /*
   function sessionprinter(client, session) {

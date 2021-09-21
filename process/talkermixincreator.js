@@ -22,7 +22,7 @@ function createProcessTalkerBase(lib, TalkerBase, mylib) {
   }
 
   function ProcessTalkerMixin(jstocreate, options) {
-    this.destroyer = this.destroy.bind(this);
+    this.destroyer = this.onProcessExit.bind(this);
     this.incomer = this.onIncoming.bind(this);
     this.proc = null;
     this.procq = new lib.Fifo();
@@ -39,6 +39,9 @@ function createProcessTalkerBase(lib, TalkerBase, mylib) {
     this.proc = null;
     this.incomer = null;
     this.destroyer = null;
+  };
+  ProcessTalkerMixin.prototype.onProcessExit = function (exitcode) {
+    this.destroy(new lib.Error('PROCESS_DIED', exitcode));
   };
   ProcessTalkerMixin.prototype.prepareCreation = function (jstocreate, options) {
     if (os.type() === 'Windows_NT'){
@@ -114,6 +117,7 @@ function createProcessTalkerBase(lib, TalkerBase, mylib) {
 
   ProcessTalkerMixin.addMethods = function (klass) {
     lib.inheritMethods(klass, ProcessTalkerMixin,
+      'onProcessExit',
       'prepareCreation',
       'send',
       'cleanProcListeners',

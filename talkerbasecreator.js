@@ -25,7 +25,7 @@ function createTalkerBase(lib) {
       return;
     }
     this.counter++;
-    if (this.counter>2) {
+    if (this.talker.lastClientError || this.counter>2) {
       //console.log('TalkerDestructor destroying', this.talker.id);
       this.talker.destroy();
       this.destroy();
@@ -47,10 +47,13 @@ function createTalkerBase(lib) {
     this.pendingDefers = new lib.DeferMap();
     this.futureOOBs = new lib.Map();
     this.destructor = null;
+    this.lastClientError = null;
   }
   lib.inherit(TalkerBase, lib.ComplexDestroyable);
   TalkerBase.prototype.__cleanUp = function () {
     var futures = this.futureOOBs, pendingDefers = this.pendingDefers, clients = this.clients; 
+    this.lastClientError = null;
+    this.destructor = null;    
     this.futureOOBs = null;
     this.pendingDefers = null;
     this.clients = null;
@@ -143,6 +146,7 @@ function createTalkerBase(lib) {
       console.error(this.clients.count, 'current clients');
       console.error(client);
     }
+    this.lastClientError = (client && this.clients.count==0 && client.__dyingException && client.__dyingException.code=='SERVER_SIDE_KILL') ? client.__dyingException : null;
     this.maybeDie();
     this.startNewSelfDestruction();
   };

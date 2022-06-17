@@ -22,7 +22,7 @@ function createInProcTalker(lib, TalkerBase) {
   };
   InProcTalker.prototype.onServiceDown = function () {
     if (this.gate) {
-      this.destroy();
+      this.destroy(new lib.Error('INPROC_SERVICE_DOWN'));
     }
   };
   InProcTalker.prototype.send = function (obj) {

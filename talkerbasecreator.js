@@ -48,10 +48,15 @@ function createTalkerBase(lib) {
     this.futureOOBs = new lib.Map();
     this.destructor = null;
     this.lastClientError = null;
+    this.globalCloseListener = lib.shouldClose.attach(this.destroy.bind(this));
   }
   lib.inherit(TalkerBase, lib.ComplexDestroyable);
   TalkerBase.prototype.__cleanUp = function () {
     var futures = this.futureOOBs, pendingDefers = this.pendingDefers, clients = this.clients; 
+    if (this.globalCloseListener) {
+      this.globalCloseListener.destroy();
+    }
+    this.globalCloseListener = null;
     this.lastClientError = null;
     this.destructor = null;    
     this.futureOOBs = null;
@@ -83,7 +88,7 @@ function createTalkerBase(lib) {
   }
   TalkerBase.prototype.startTheDyingProcedure = function (exception) {
     if (this.clients) {
-      this.clients.traverse(deathTeller.bind(null, exception));
+      this.clients.traverseSafe(deathTeller.bind(null, exception), 'Error in killing '+this.constructor.name+' clients');
     }
     exception = null;
   };

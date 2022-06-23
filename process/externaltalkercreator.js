@@ -3,6 +3,7 @@ var net = require('net');
 var fs = require('fs');
 var Path = require('path');
 var tempPipeDir = require('allex_temppipedirserverruntimelib');
+const { kill } = require('process');
 
 function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
   'use strict';
@@ -21,8 +22,7 @@ function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
   }
 
   process.on('uncaughtException', killSpawned);
-  process.on('SIGTERM', killSpawned);
-  process.on('SIGINT', killSpawned);
+  lib.shouldClose.attachForSingleShot(killSpawned);
 
   function ExternalProcessTalker(jstofork, options) {
     PingingTalker.call(this, true);

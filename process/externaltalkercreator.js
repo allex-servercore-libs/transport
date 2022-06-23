@@ -3,7 +3,6 @@ var net = require('net');
 var fs = require('fs');
 var Path = require('path');
 var tempPipeDir = require('allex_temppipedirserverruntimelib');
-const { kill } = require('process');
 
 function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
   'use strict';

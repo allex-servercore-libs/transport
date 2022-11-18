@@ -220,9 +220,6 @@ function createTalkerBase(lib) {
       console.log(this.type, 'rejecting', incoming);
       return;
     }
-    if (incoming[0] === '?') {
-      console.log(incoming);
-    }
     switch(incoming[0]) {
       case 'r': 
         if (incoming[1] === '?') {
@@ -270,8 +267,7 @@ function createTalkerBase(lib) {
         }
         break;
       case '?':
-        console.log('pong?', incoming);
-        this.send(['!', incoming[1]]);
+        this.processPing(incoming[1]);
         break;
       case '!':
         this.processPong(incoming[1]);

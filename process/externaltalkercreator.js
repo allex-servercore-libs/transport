@@ -113,7 +113,7 @@ function createProcessTalker(lib, PingingTalker, mylib, tcpTalkerFactory) {
     }
   };
   ExternalProcessTalker.prototype.onChildPipeOpen = function () {
-    //this.processPong(Date.now() - 5);
+    //this.processPong(lib.now() - 5);
     this.childProcTalker = tcpTalkerFactory(this.childProcSocket, this.onChildTalker.bind(this), false);
     this.childProcTalker.clients = null; //to disable SelfDestructor
     this.established = true;

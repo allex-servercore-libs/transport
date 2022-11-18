@@ -1,27 +1,25 @@
-function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin, signalR) {
+function createHttpTalker (lib, PingingTalker, OuterClientBoundTalkerMixin, signalR) {
   'use strict';
 
   var qlib = lib.qlib,
     JobOnDestroyableBase = qlib.JobOnDestroyableBase;
 
   function HttpTalker(connectionstring, address, port, defer) {
-    TalkerBase.call(this);
+    PingingTalker.call(this, false);
     OuterClientBoundTalkerMixin.call(this, address, port, defer);
     this.underscorer = this.onSignalRUnderscore.bind(this);
     this.closer = this.onSignalRClosed.bind(this);
     this.connectionstring = connectionstring;
-    this.sr = new signalR.HubConnectionBuilder()
-      .withUrl(this.connectionstring)
-      .configureLogging(5) //critical only
-      .build();
+    this.sr = null;
     this.jobs = new qlib.JobCollection();
+    this.buildSignalR();
     this.setHandlers();
     this.sr.start({withCredentials: false}).then(
       defer.resolve.bind(defer, this),
       this.errorer
     );
   };
-  lib.inherit(HttpTalker, TalkerBase);
+  lib.inherit(HttpTalker, PingingTalker);
   OuterClientBoundTalkerMixin.addMethods(HttpTalker);
   HttpTalker.prototype.__cleanUp = function(){
     if (this.jobs) {
@@ -38,12 +36,18 @@ function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin, signalR
     this.closer = null;
     this.underscorer = null;
     OuterClientBoundTalkerMixin.prototype.destroy.call(this);
-    TalkerBase.prototype.__cleanUp.call(this);
+    PingingTalker.prototype.__cleanUp.call(this);
   };
   HttpTalker.prototype.send = function (obj) {
     return this.jobs.run('.', new SignalRSendingJob(this, obj));
   };
 
+  HttpTalker.prototype.buildSignalR = function () {
+    this.sr = new signalR.HubConnectionBuilder()
+      .withUrl(this.connectionstring)
+      .configureLogging(5) //critical only
+      .build();
+  };
   HttpTalker.prototype.setHandlers = function () {
     this.sr.on('_', this.underscorer);
     this.sr.onclose(this.closer);
@@ -62,13 +66,14 @@ function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin, signalR
   };
   HttpTalker.prototype.onSignalRClosed = function (error) {
     if (this.address && this.port) {
-      console.log(process.pid, this.address, this.port, 'HttpTalker closing');
+      console.log(process.pid, this.address, this.port, 'HttpTalker closing', error);
       //this.destroy(error);
       this.destroy(new lib.NoServerError('ws',this.address,this.port));
       return;
     }
     this.destroy();
   };
+  HttpTalker.prototype.type = 'http';
 
 
   //jobs
@@ -111,10 +116,7 @@ function createHttpTalker (lib, TalkerBase, OuterClientBoundTalkerMixin, signalR
     this.resolve(true);
   };
 
-
-
   return HttpTalker;
-
 }
 module.exports = createHttpTalker;
 

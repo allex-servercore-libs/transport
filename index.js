@@ -7,7 +7,7 @@ function createTalkerFactory (lib, signalR) {
     tcpTalkerFactory = require('./socket/factorycreator')(lib, PingingTalker),
     WSTalker = require('./ws/talkercreator')(lib, PingingTalker, OuterClientBoundTalkerMixin),
     processTalkerLib = require('./process')(lib, TalkerBase, PingingTalker, tcpTalkerFactory),
-    HttpTalker = require('./http/talkercreator')(lib, TalkerBase, OuterClientBoundTalkerMixin, signalR),
+    HttpTalker = require('./http/talkercreator')(lib, PingingTalker, OuterClientBoundTalkerMixin, signalR),
     ProcessTalker = processTalkerLib.ProcessTalker,
     ExternalProcessTalker = processTalkerLib.ExternalProcessTalker
     ;

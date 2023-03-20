@@ -14,7 +14,7 @@ function createOuterClientBoundTalkerMixin (lib) {
   OuterClientBoundTalkerMixin.prototype.onBoundClientError = function (error) {
     var err;
     if (!('code' in error)) {
-      err = new lib.NoServerError('ws',this.address,this.port);
+      err = new lib.NoServerError('ws',this.address,this.port,error);
     } else {
       switch(error.code){
         case 'ENOTFOUND':

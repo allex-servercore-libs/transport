@@ -27,7 +27,7 @@ function createTalkerBase(lib) {
     this.counter++;
     if (this.talker.lastClientError || this.counter>2) {
       //console.log('TalkerDestructor destroying', this.talker.id);
-      this.talker.destroy();
+      this.talker.destroy(this.talker.lastClientError);
       this.destroy();
       return;
     }

@@ -49,9 +49,11 @@ function createTalkerBase(lib) {
     this.destructor = null;
     this.lastClientError = null;
     this.globalCloseListener = lib.shouldClose.attach(this.destroy.bind(this));
+    this.bulk = null;
   }
   lib.inherit(TalkerBase, lib.ComplexDestroyable);
   TalkerBase.prototype.__cleanUp = function () {
+    this.bulk = null;
     var futures = this.futureOOBs, pendingDefers = this.pendingDefers, clients = this.clients; 
     if (this.globalCloseListener) {
       this.globalCloseListener.destroy();
@@ -62,9 +64,7 @@ function createTalkerBase(lib) {
     this.futureOOBs = null;
     this.pendingDefers = null;
     this.clients = null;
-    if (this.pingWaiter) {
-      lib.clearTimeout(this.pingWaiter);
-    }
+    this.ackIncoming();
     if (futures) {
       lib.containerDestroyAll(futures);
       futures.destroy();
@@ -86,6 +86,14 @@ function createTalkerBase(lib) {
     */
     client.takeExternalException(exception);
   }
+  TalkerBase.prototype.processPing = function () {
+    this.ackIncoming();
+  };
+  TalkerBase.prototype.ackIncoming = function () {
+    if (this.pingWaiter) {
+      lib.clearTimeout(this.pingWaiter);
+    }
+  };
   TalkerBase.prototype.startTheDyingProcedure = function (exception) {
     if (this.clients) {
       this.clients.traverseSafe(deathTeller.bind(null, exception), 'Error in killing '+this.constructor.name+' clients');
@@ -212,7 +220,7 @@ function createTalkerBase(lib) {
   };
   TalkerBase.prototype.onIncoming = function(incoming){
     //console.log('onIncoming', incoming);
-    var oob, oobsession, client, future, clientid;
+    var oob, oobsession, client, future, clientid, blk;
     if (!(this.pendingDefers && this.clients)) {
       return;
     }
@@ -268,7 +276,7 @@ function createTalkerBase(lib) {
         break;
       case '?':
         this.processPing(incoming[1]);
-        break;
+        return;
       case '!':
         this.processPong(incoming[1]);
         break;
@@ -285,11 +293,23 @@ function createTalkerBase(lib) {
           this.pendingDefers.reject(incoming[1][0], new lib.Error('CLIENT_SHOULD_FORGET', 'Session ID not recognized on the server side, forget yourself'));
         }
         break;
+      case '~':
+        this.bulk = (this.bulk||'')+ incoming[2];
+        if (incoming[1]<1) {
+          blk = this.bulk;
+          this.bulk = null;
+          try {
+            this.onIncoming(JSON.parse(blk)[0]);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        break;
       default:
         console.log('not processed', incoming);
-        break;
+        return;
     }
-    //this.onIncomingExecResult(incomingunit);
+    this.processPing(); //for any cases that were recognized, but were not pings
   };
   var _reportDefersThreshold = 20;
   TalkerBase.prototype.reportDefers = function (title) {

@@ -60,9 +60,20 @@ function createHttpTalker (lib, PingingTalker, OuterClientBoundTalkerMixin, sign
     this.sr.onclose(null); //no way to unset the close handler?
   };
 
-  HttpTalker.prototype.onSignalRUnderscore = function (oobobj) {
+  HttpTalker.prototype.onSignalRUnderscore = function (argsstring) {
+    var args;
+    try {
+      args = JSON.parse(argsstring);
+    } catch (e) {
+      console.error(argsstring);
+      console.error(e);
+    }
+    if (!(lib.isArray(args) && args.length==1)) {
+      console.error('args should have been a 1-element Array', args);
+      return;
+    }
     //console.log('HttpTalker onIncoming', require('util').inspect(oobobj, {colors:true, depth:7}));
-    this.onIncoming(oobobj);
+    this.onIncoming(args[0]);
   };
   HttpTalker.prototype.onSignalRClosed = function (error) {
     if (this.address && this.port) {

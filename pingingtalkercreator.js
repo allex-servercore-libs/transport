@@ -60,9 +60,7 @@ function createPingingTalker(lib, TalkerBase) {
     this.send(['?', this.lastping]);
   };
   PingingTalker.prototype.processPing = function (ping) {
-    if (this.pingWaiter) {
-      lib.clearTimeout(this.pingWaiter);
-    }
+    this.ackIncoming();
     this.whenPingFailerWasSet = lib.now();
     this.pingWaiter = lib.runNext(this.pingfailer, PING_PERIOD*2);
     if (ping) {
